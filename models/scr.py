@@ -11,12 +11,12 @@ LICENSE file in the root directory of this source tree.
 from torch import nn
 import torch
 from torch.nn.functional import unfold, pad
-from timm.models.layers import trunc_normal_
 import warnings
+from timm.models.layers import trunc_normal_, DropPath
 
 
 # class SCR(nn.Module):
-#     def __init__(self, planes=[640, 64, 64, 64, 640], stride=(1, 1, 1), ksize=3, do_padding=False, bias=False):
+#     def __init__(self, planes=[640, 64, 64, 64, 640], stride=1, ksize=3, do_padding=False, bias=False):
 #         super(SCR, self).__init__()
 #         self.ksize = _quadruple(ksize) if isinstance(ksize, int) else ksize  # 4倍 isinstance() 函数来判断一个对象是否是一个已知的类型（是否与int一个类型）
 #         padding1 = (0, self.ksize[2] // 2, self.ksize[3] // 2) if do_padding else (0, 0, 0)
@@ -79,13 +79,13 @@ import warnings
 
 
 
-
 class SelfCorrelationComputation(nn.Module):
-    def __init__(self, dim, kernel_size, num_heads,
+    def __init__(self, dim, kernel_size, num_heads,norm_layer=nn.LayerNorm,layer_scale=None,
                  qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
                  mode=1):
         super().__init__()
         self.num_heads = num_heads
+        self.norm1 = norm_layer(dim)
         self.head_dim = dim // self.num_heads
         self.scale = qk_scale or self.head_dim ** -0.5
         assert kernel_size > 1 and kernel_size % 2 == 1, \
@@ -108,12 +108,20 @@ class SelfCorrelationComputation(nn.Module):
         self.idx_w = torch.arange(0, kernel_size)
         self.idx_k = ((self.idx_h.unsqueeze(-1) * self.rpb_size) + self.idx_w).view(-1)
         warnings.warn("This is the legacy version of NAT -- it uses unfold+pad to produce NAT, and is highly inefficient.")
+        # self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 64, kernel_size=1, bias=False, padding=0),
+        #                                 nn.BatchNorm2d(640),
+        #                                 nn.ReLU(inplace=True))
+        # self.conv1x1_out = nn.Sequential(
+        #     nn.Conv2d(64, 640, kernel_size=1, bias=False, padding=0),
+        #     nn.BatchNorm2d(64))
+        if layer_scale is not None and type(layer_scale) in [int, float]:
+            self.layer_scale = True
+            self.gamma1 = nn.Parameter(layer_scale * torch.ones(dim), requires_grad=True)
+            self.gamma2 = nn.Parameter(layer_scale * torch.ones(dim), requires_grad=True)
+
 
     def apply_pb(self, attn, height, width):
-        """
-        RPB implementation by @qwopqwop200
-        https://github.com/qwopqwop200/Neighborhood-Attention-Transformer
-        """
+
         num_repeat_h = torch.ones(self.kernel_size,dtype=torch.long)
         num_repeat_w = torch.ones(self.kernel_size,dtype=torch.long)
         num_repeat_h[self.kernel_size//2] = height - (self.kernel_size-1)
@@ -126,9 +134,8 @@ class SelfCorrelationComputation(nn.Module):
         return attn + self.rpb.flatten(1, 2)[:, bias_idx].reshape(self.num_heads, height * width, 1, self.kernel_size ** 2).transpose(0, 1)
 
     def forward(self, x):
-        x = self.relu(x)
-        x = F.normalize(x, dim=1, p=2)
         x = x.permute(0, 2, 3, 1).contiguous()
+        x = self.norm1(x)
         B, H, W, C = x.shape
         N = H * W
         num_tokens = int(self.kernel_size ** 2)
@@ -148,18 +155,7 @@ class SelfCorrelationComputation(nn.Module):
         q = q.reshape(B, N, self.num_heads, C // self.num_heads, 1).transpose(3, 4) * self.scale  # (80,25,1,1,640)
         pd = self.kernel_size - 1
         pdr = pd // 2
-        # NAT Implementation mode
-        # Mode 0 is more memory efficient because Tensor.unfold is not contiguous, so
-        #         it will be almost as if the replicate pad and unfold will allocate the
-        #         memory for the new tensor at the same time.
-        # Mode 1 is less memory efficient, because F.unfold is contiguous, so unfold will
-        #         output an actual tensor once, and replicate will work on that so it'll be
-        #         one extra memory allocation. On the other hand, because F.unfold has a CUDA
-        #         kernel of its own, and possibly because we don't have to flatten channel
-        #         and batch axes to use Tensor.unfold, this will be somewhat faster, but at the
-        #         expense of using more memory. It is more feasible for CLS as opposed to DET/SEG
-        #         because we're dealing with smaller-res images, but have a lot more images to get
-        #         through.
+
         if self.mode == 0:
             x = x.permute(0, 3, 1, 2).flatten(0, 1)
             x = x.unfold(1, self.kernel_size, 1).unfold(2, self.kernel_size, 1).permute(0, 3, 4, 1, 2)
@@ -189,8 +185,12 @@ class SelfCorrelationComputation(nn.Module):
         if pad_r or pad_b:
             x = x[:, :Ho, :Wo, :]
         x = x.permute(0, 3, 1, 2).contiguous()
+
+        # x = self.conv1x1_in(x)
+        # x = self.conv1x1_out(x)
         # x = self.proj_drop(x)
 
         # return self.proj_drop(self.proj(x))
+
         return x
 

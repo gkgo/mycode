@@ -39,7 +39,7 @@ class RENet(nn.Module):
             # corr_block = SelfCorrelationComputation(kernel_size=kernel_size, padding=padding)
             # kernel_size=5,dim=640,num_heads=1
             # corr_block = SelfCorrelationComputation(kernel_size=3, dim=640, num_heads=1)
-            corr_block = SelfCorrelationComputation(kernel_size=7,dim=640,num_heads=2)
+            corr_block = SelfCorrelationComputation(kernel_size=5,dim=640,num_heads=2)
             # self_block = SCR(planes=planes, stride=stride)
         elif self.args.self_method == 'sce':
             planes = [640, 64, 64, 640]

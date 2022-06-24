@@ -10,7 +10,7 @@ class DatasetLoader(Dataset):
 
     def __init__(self, setname, args=None, return_path=False):
 
-        DATASET_DIR = os.path.join(args.data_dir, 'cifarfs')
+        DATASET_DIR = os.path.join(args.data_dir, 'cifar-fs')
 
         # Set the path according to train, val and test
         if setname == 'train':

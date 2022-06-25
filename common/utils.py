@@ -63,6 +63,7 @@ def ensure_path(path):
 
 def compute_accuracy(logits, labels):
     pred = torch.argmax(logits, dim=1)
+    # 返回每行上最大值索引，因为有75行（每行代表一张图片的数据），所以75个索引
     return (pred == labels).type(torch.float).mean().item() * 100.
 
 
@@ -141,18 +142,18 @@ def parse_args(arg_mode):
     parser.add_argument('-temperature', type=float, default=0.2, metavar='tau', help='temperature for metric-based loss')
     parser.add_argument('-lamb', type=float, default=0.25, metavar='lambda', help='loss balancing term')
 
-    ''' about training schedules '''
-    parser.add_argument('-max_epoch', type=int, default=100, help='max epoch to run')
+    ''' about training schedules '''  # 学习率
+    parser.add_argument('-max_epoch', type=int, default=80, help='max epoch to run')
     parser.add_argument('-lr', type=float, default=0.1, help='learning rate')
-    parser.add_argument('-gamma', type=float, default=0.05, help='learning rate decay factor')
-    parser.add_argument('-milestones', nargs='+', type=int, default=[50, 70 ,90], help='milestones for MultiStepLR')
+    parser.add_argument('-gamma', type=float, default=0.05, help='learning rate decay factor')  # 倍数
+    parser.add_argument('-milestones', nargs='+', type=int, default=[40, 60, 70], help='milestones for MultiStepLR') # 在epoch为60和70减少gamma倍
     parser.add_argument('-save_all', action='store_true', help='save models on each epoch')
 
     ''' about few-shot episodes '''
-    parser.add_argument('-way', type=int, default=5, metavar='N', help='number of few-shot classes')
-    parser.add_argument('-shot', type=int, default=1, metavar='K', help='number of shots')
-    parser.add_argument('-query', type=int, default=15, help='number of query image per class')
-    parser.add_argument('-val_episode', type=int, default=200, help='number of validation episode')
+    parser.add_argument('-way', type=int, default=5, metavar='N', help='number of few-shot classes')  # 5—way(5类)
+    parser.add_argument('-shot', type=int, default=1, metavar='K', help='number of shots')  # 1-shot（每类1个）
+    parser.add_argument('-query', type=int, default=15, help='number of query image per class')  # 15 每类的测试查询图像数(总共75张query)
+    parser.add_argument('-val_episode', type=int, default=200, help='number of validation episode')  # 取200个val集，一个val集中有5类，每个类的15个查询样本
     parser.add_argument('-test_episode', type=int, default=2000, help='number of testing episodes after training')
 
     ''' about SCR '''
@@ -163,8 +164,8 @@ def parse_args(arg_mode):
 
     ''' about env '''
     parser.add_argument('-gpu', default='0', help='the GPU ids e.g. \"0\", \"0,1\", \"0,1,2\", etc')
-    parser.add_argument('-extra_dir', type=str, default='test222', help='extra dir name added to checkpoint dir')
-    parser.add_argument('-seed', type=int, default=1, help='random seed')
+    parser.add_argument('-extra_dir', type=str, default='test222', help='extra dir name added to checkpoint dir')  # 运行结果的保存
+    parser.add_argument('-seed', type=int, default=1, help='random seed')  # 随机种子
     parser.add_argument('-no_wandb', action='store_true', help='not plotting learning curve on wandb',
                         default=arg_mode == 'test')  # train: enable logging / test: disable logging
     args = parser.parse_args()

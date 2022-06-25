@@ -6,10 +6,10 @@ import torch.nn.functional as F
 from models.resnet import ResNet
 from models.cca import CCA
 from models.scr import  SelfCorrelationComputation
-from models.others.se import SqueezeExcitation
-from models.others.lsa import LocalSelfAttention
-from models.others.nlsa import NonLocalSelfAttention
-from models.others.sce import SpatialContextEncoder
+# from models.others.se import SqueezeExcitation
+# from models.others.lsa import LocalSelfAttention
+# from models.others.nlsa import NonLocalSelfAttention
+# from models.others.sce import SpatialContextEncoder
 
 
 class RENet(nn.Module):
@@ -32,24 +32,24 @@ class RENet(nn.Module):
         )
 
     def _make_scr_layer(self, planes):
-        stride, kernel_size, padding = (1, 1, 1), (5, 5), 2
+        # stride, kernel_size, padding = (1, 1, 1), (5, 5), 2
         layers = list()
 
         if self.args.self_method == 'scr':
             # corr_block = SelfCorrelationComputation(kernel_size=kernel_size, padding=padding)
             # kernel_size=5,dim=640,num_heads=1
             # corr_block = SelfCorrelationComputation(kernel_size=3, dim=640, num_heads=1)
-            corr_block = SelfCorrelationComputation(kernel_size=5,dim=640,num_heads=2)
+            corr_block = SelfCorrelationComputation(kernel_size=7,dim=640,num_heads=2)
             # self_block = SCR(planes=planes, stride=stride)
-        elif self.args.self_method == 'sce':
-            planes = [640, 64, 64, 640]
-            self_block = SpatialContextEncoder(planes=planes, kernel_size=kernel_size[0])
-        elif self.args.self_method == 'se':
-            self_block = SqueezeExcitation(channel=planes[0])
-        elif self.args.self_method == 'lsa':
-            self_block = LocalSelfAttention(in_channels=planes[0], out_channels=planes[0], kernel_size=kernel_size[0])
-        elif self.args.self_method == 'nlsa':
-            self_block = NonLocalSelfAttention(planes[0], sub_sample=False)
+        # elif self.args.self_method == 'sce':
+        #     planes = [640, 64, 64, 640]
+        #     self_block = SpatialContextEncoder(planes=planes, kernel_size=kernel_size[0])
+        # elif self.args.self_method == 'se':
+        #     self_block = SqueezeExcitation(channel=planes[0])
+        # elif self.args.self_method == 'lsa':
+        #     self_block = LocalSelfAttention(in_channels=planes[0], out_channels=planes[0], kernel_size=kernel_size[0])
+        # elif self.args.self_method == 'nlsa':
+        #     self_block = NonLocalSelfAttention(planes[0], sub_sample=False)
         else:
             raise NotImplementedError
 

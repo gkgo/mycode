@@ -80,12 +80,11 @@ from timm.models.layers import trunc_normal_, DropPath
 
 
 class SelfCorrelationComputation(nn.Module):
-    def __init__(self, dim, kernel_size, num_heads,norm_layer=nn.LayerNorm,layer_scale=None,
+    def __init__(self, dim, kernel_size, num_heads,
                  qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.,
                  mode=1):
         super().__init__()
         self.num_heads = num_heads
-        self.norm1 = norm_layer(dim)
         self.head_dim = dim // self.num_heads
         self.scale = qk_scale or self.head_dim ** -0.5
         assert kernel_size > 1 and kernel_size % 2 == 1, \
@@ -108,16 +107,13 @@ class SelfCorrelationComputation(nn.Module):
         self.idx_w = torch.arange(0, kernel_size)
         self.idx_k = ((self.idx_h.unsqueeze(-1) * self.rpb_size) + self.idx_w).view(-1)
         warnings.warn("This is the legacy version of NAT -- it uses unfold+pad to produce NAT, and is highly inefficient.")
+        self.bn1 = nn.BatchNorm2d(640)
         # self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 64, kernel_size=1, bias=False, padding=0),
         #                                 nn.BatchNorm2d(640),
         #                                 nn.ReLU(inplace=True))
         # self.conv1x1_out = nn.Sequential(
         #     nn.Conv2d(64, 640, kernel_size=1, bias=False, padding=0),
         #     nn.BatchNorm2d(64))
-        if layer_scale is not None and type(layer_scale) in [int, float]:
-            self.layer_scale = True
-            self.gamma1 = nn.Parameter(layer_scale * torch.ones(dim), requires_grad=True)
-            self.gamma2 = nn.Parameter(layer_scale * torch.ones(dim), requires_grad=True)
 
 
     def apply_pb(self, attn, height, width):
@@ -134,8 +130,10 @@ class SelfCorrelationComputation(nn.Module):
         return attn + self.rpb.flatten(1, 2)[:, bias_idx].reshape(self.num_heads, height * width, 1, self.kernel_size ** 2).transpose(0, 1)
 
     def forward(self, x):
+        x = self.relu(x)
+        x = F.normalize(x, dim=1, p=2)
         x = x.permute(0, 2, 3, 1).contiguous()
-        x = self.norm1(x)
+        # x = self.norm1(x)
         B, H, W, C = x.shape
         N = H * W
         num_tokens = int(self.kernel_size ** 2)
@@ -184,7 +182,9 @@ class SelfCorrelationComputation(nn.Module):
         x = x.reshape(B, H, W, C)  # (80,5,5,640)
         if pad_r or pad_b:
             x = x[:, :Ho, :Wo, :]
+        x = self.proj_drop(self.proj(x))
         x = x.permute(0, 3, 1, 2).contiguous()
+        x = nn.BatchNorm2d(x)
 
         # x = self.conv1x1_in(x)
         # x = self.conv1x1_out(x)

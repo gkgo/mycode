@@ -184,7 +184,7 @@ class SelfCorrelationComputation(nn.Module):
             x = x[:, :Ho, :Wo, :]
         x = self.proj_drop(self.proj(x))
         x = x.permute(0, 3, 1, 2).contiguous()
-        x = nn.BatchNorm2d(x)
+        x = nn.bn1(x)
 
         # x = self.conv1x1_in(x)
         # x = self.conv1x1_out(x)

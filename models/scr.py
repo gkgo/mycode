@@ -1,19 +1,10 @@
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.utils import _quadruple
-"""
-Neighborhood Attention PyTorch Module (Based on existing torch modules)
-This version does not require the torch extension and is implemented using unfold + pad.
-
-This source code is licensed under the license found in the
-LICENSE file in the root directory of this source tree.
-"""
-from torch import nn
 import torch
+import torch.nn as nn
 from torch.nn.functional import unfold, pad
 import warnings
 from timm.models.layers import trunc_normal_, DropPath
-
+# from torch import nn
 
 # class SCR(nn.Module):
 #     def __init__(self, planes=[640, 64, 64, 64, 640], stride=1, ksize=3, do_padding=False, bias=False):
@@ -184,7 +175,7 @@ class SelfCorrelationComputation(nn.Module):
             x = x[:, :Ho, :Wo, :]
         x = self.proj_drop(self.proj(x))
         x = x.permute(0, 3, 1, 2).contiguous()
-        x = nn.bn1(x)
+        x = self.bn1(x)
 
         # x = self.conv1x1_in(x)
         # x = self.conv1x1_out(x)

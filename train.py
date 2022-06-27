@@ -8,8 +8,7 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 
-from common import meter
-
+from common.meter import Meter
 from common.utils import detect_grad_nan, compute_accuracy, set_seed, setup_run
 from models.dataloader.samplers import CategoriesSampler
 from models.dataloader.data_utils import dataset_builder
@@ -27,8 +26,8 @@ def train(epoch, model, loader, optimizer, args=None):
     # label for query set, always in the same pattern
     label = torch.arange(args.way).repeat(args.query).cuda()  # 012340123401234...
 
-    loss_meter = meter.Meter()  # 创建对象
-    acc_meter = meter.Meter()
+    loss_meter = Meter()  # 创建对象
+    acc_meter = Meter()
 
     k = args.way * args.shot  # 得出带标签图像的个数
     tqdm_gen = tqdm.tqdm(train_loader)
@@ -48,15 +47,12 @@ def train(epoch, model, loader, optimizer, args=None):
         data_shot, data_query = data[:k], data[k:]
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
-        
-        absolute_loss = meter.Focal_Loss(absolute_logits, train_labels[k:])
-        # absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
+        absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
 
         # loss for auxiliary batch
         model.module.mode = 'fc'
         logits_aux = model(data_aux)
-        loss_aux = meter.Focal_Loss(logits_aux, train_labels_aux)
-        # loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
+        loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
         loss_aux = loss_aux + absolute_loss  # Lanchor损失是分类结果的损失
 
         loss = args.lamb * epi_loss + loss_aux

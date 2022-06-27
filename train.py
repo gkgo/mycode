@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 
-from common.meter import Meter
+from common.meter import Meter, Focal_Loss
 from common.utils import detect_grad_nan, compute_accuracy, set_seed, setup_run
 from models.dataloader.samplers import CategoriesSampler
 from models.dataloader.data_utils import dataset_builder
@@ -47,12 +47,15 @@ def train(epoch, model, loader, optimizer, args=None):
         data_shot, data_query = data[:k], data[k:]
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
-        absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
+        L=Focal_Loss()
+        absolute_loss=L(absolute_logits, train_labels[k:])
+        # absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
 
         # loss for auxiliary batch
         model.module.mode = 'fc'
         logits_aux = model(data_aux)
-        loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
+        loss_aux = L(logits_aux, train_labels_aux)
+        # loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
         loss_aux = loss_aux + absolute_loss  # Lanchor损失是分类结果的损失
 
         loss = args.lamb * epi_loss + loss_aux

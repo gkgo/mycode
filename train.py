@@ -48,14 +48,14 @@ def train(epoch, model, loader, optimizer, args=None):
         data_shot, data_query = data[:k], data[k:]
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
-        L1 = meter.Focal_Loss()
-        absolute_loss = L1(absolute_logits, train_labels[k:])
+        
+        absolute_loss = meter.Focal_Loss(absolute_logits, train_labels[k:])
         # absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
 
         # loss for auxiliary batch
         model.module.mode = 'fc'
         logits_aux = model(data_aux)
-        loss_aux = L1(logits_aux, train_labels_aux)
+        loss_aux = meter.Focal_Loss(logits_aux, train_labels_aux)
         # loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
         loss_aux = loss_aux + absolute_loss  # Lanchor损失是分类结果的损失
 

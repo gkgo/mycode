@@ -146,7 +146,7 @@ def parse_args(arg_mode):
     parser.add_argument('-max_epoch', type=int, default=60, help='max epoch to run')
     parser.add_argument('-lr', type=float, default=0.1, help='learning rate')
     parser.add_argument('-gamma', type=float, default=0.05, help='learning rate decay factor')  # 倍数
-    parser.add_argument('-milestones', nargs='+', type=int, default=[40, 50], help='milestones for MultiStepLR') # 在epoch为60和70减少gamma倍
+    parser.add_argument('-milestones', nargs='+', type=int, default=[40, 60], help='milestones for MultiStepLR') # 在epoch为60和70减少gamma倍
     parser.add_argument('-save_all', action='store_true', help='save models on each epoch')
 
     ''' about few-shot episodes '''

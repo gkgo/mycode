@@ -8,7 +8,8 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 
-from common.meter import Meter
+# from common.facolloss import FocalLossV2
+from common.meter import Meter ,FocalLossV2
 from common.utils import detect_grad_nan, compute_accuracy, set_seed, setup_run
 from models.dataloader.samplers import CategoriesSampler
 from models.dataloader.data_utils import dataset_builder
@@ -44,15 +45,20 @@ def train(epoch, model, loader, optimizer, args=None):
         # 到这里截至
         # loss for batch
         model.module.mode = 'cca'
-        data_shot, data_query = data[:k], data[k:]
+        data_shot, data_query = data[:k], data[k:]   # 都是(5,640,5,5)
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
+        L = FocalLossV2()
+        # print(F.one_hot(train_labels[k:], num_classes=64))
+        # absolute_loss = L(absolute_logits, train_labels[k:])
         absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
+
 
         # loss for auxiliary batch
         model.module.mode = 'fc'
         logits_aux = model(data_aux)
-        loss_aux = F.cross_entropy(logits_aux, train_labels_aux)
+        train_labels_aux = F.one_hot(train_labels_aux, num_classes=64)
+        loss_aux = L(logits_aux, train_labels_aux)
         loss_aux = loss_aux + absolute_loss  # Lanchor损失是分类结果的损失
 
         loss = args.lamb * epi_loss + loss_aux
@@ -79,18 +85,18 @@ def train_main(args):
     train_sampler = CategoriesSampler(trainset.label, len(trainset.data) // args.batch, args.way, args.shot + args.query)#gfasdgiasugdfkasgfoigaskgaig
     # （训练数据的标签，n_batch=总数/batch，n_cls=5，n_per=16）train_sampler = {CategoriesSampler: 92}
     # train_sampler是一个自定义的batch_sampler
-    train_loader = DataLoader(dataset=trainset, batch_sampler=train_sampler, num_workers=2, pin_memory=True)
+    train_loader = DataLoader(dataset=trainset, batch_sampler=train_sampler, num_workers=1, pin_memory=True)
     # 每够一个batch，把dataset里的数据按原来顺序，将顺序索引值返回，92组索引
 
     trainset_aux = Dataset('train', args)
-    train_loader_aux = DataLoader(dataset=trainset_aux, batch_size=args.batch, shuffle=True, num_workers=2, pin_memory=True)
+    train_loader_aux = DataLoader(dataset=trainset_aux, batch_size=args.batch, shuffle=True, num_workers=1, pin_memory=True)
     # 每够一个batch，把dataset里的数据打乱顺序，将打乱索引值返回
     train_loaders = {'train_loader': train_loader, 'train_loader_aux': train_loader_aux}  # 不懂
     # 加载验证集
     valset = Dataset('val', args)  # dataset为val.csv
     val_sampler = CategoriesSampler(valset.label, args.val_episode, args.way, args.shot + args.query)  # 返回的n_batch=200
 
-    val_loader = DataLoader(dataset=valset, batch_sampler=val_sampler, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(dataset=valset, batch_sampler=val_sampler, num_workers=1, pin_memory=True)
     ''' fix val set for all epochs '''
     val_loader = [x for x in val_loader]  # 这里迭代，调用n_batch次（200）__iter__函数,每个batch大小为80
 

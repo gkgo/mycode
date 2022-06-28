@@ -44,49 +44,39 @@ def Focal_Loss(preds, labels):
     return torch.mean(floss)
 
 
-    # def forward(self, preds, labels,self.weight=0.25):
-    #     """
-    #     preds:softmax输出结果
-    #     labels:真实值
-    #     """
-    #     eps = 1e-7
-    #     y_pred = preds.view((preds.size()[0], preds.size()[1], -1))  # B*C*H*W->B*C*(H*W)
-    #
-    #     target = labels.view(y_pred.size())  # B*C*H*W->B*C*(H*W)
-    #
-    #     ce = -1 * torch.log(y_pred + eps) * target
-    #     floss = torch.pow((1 - y_pred), 2) * ce
-    #     floss = torch.mul(floss, self.weight)
-    #     floss = torch.sum(floss, dim=1)
-    #     return torch.mean(floss)
-# class Focal_Loss(nn.Module):
-#
-#     def __init__(self,
-#                  alpha=0.25,
-#                  gamma=2,
-#                  reduction='mean',):
-#         super(Focal_Loss(), self).__init__()
-#         self.alpha = alpha
-#         self.gamma = gamma
-#         self.reduction = reduction
-#         self.crit = nn.BCEWithLogitsLoss(reduction='none')
-#
-#     def forward(self, logits, label):
-#
-#         probs = torch.sigmoid(logits)
-#         coeff = torch.abs(label - probs).pow(self.gamma).neg()
-#         log_probs = torch.where(logits >= 0,
-#                 F.softplus(logits, -1, 50),
-#                 logits - F.softplus(logits, 1, 50))
-#         log_1_probs = torch.where(logits >= 0,
-#                 -logits + F.softplus(logits, -1, 50),
-#                 -F.softplus(logits, 1, 50))
-#         loss = label * self.alpha * log_probs + (1. - label) * (1. - self.alpha) * log_1_probs
-#         loss = loss * coeff
-#
-#         if self.reduction == 'mean':
-#             loss = loss.mean()
-#         if self.reduction == 'sum':
-#             loss = loss.sum()
-#         return loss
+class FocalLossV2(nn.Module):
 
+    def __init__(self,
+                 alpha=0.25,
+                 gamma=2,
+                 reduction='mean',):
+        super(FocalLossV2, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+        self.crit = nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, logits, label):
+        '''
+        Usage is same as nn.BCEWithLogits:
+            >>> criteria = FocalLossV2()
+            >>> logits = torch.randn(8, 19, 384, 384)
+            >>> lbs = torch.randint(0, 2, (8, 19, 384, 384)).float()
+            >>> loss = criteria(logits, lbs)
+        '''
+        probs = torch.sigmoid(logits)
+        coeff = torch.abs(label - probs).pow(self.gamma).neg()  # 绝对值 平方 取负
+        log_probs = torch.where(logits >= 0,
+                F.softplus(logits, -1, 50),
+                logits - F.softplus(logits, 1, 50))
+        log_1_probs = torch.where(logits >= 0,
+                -logits + F.softplus(logits, -1, 50),
+                -F.softplus(logits, 1, 50))
+        loss = label * self.alpha * log_probs + (1. - label) * (1. - self.alpha) * log_1_probs
+        loss = loss * coeff
+
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        if self.reduction == 'sum':
+            loss = loss.sum()
+        return loss

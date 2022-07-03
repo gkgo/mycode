@@ -5,11 +5,14 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import fastai
+from fastai.vision.all import *
 
 from torch.utils.data import DataLoader
+# from common.PolyLoss import to_one_hot, PolyLoss
 
 # from common.facolloss import FocalLossV2
-from common.meter import Meter ,FocalLossV2
+from common.meter import Meter, PolyLoss
 from common.utils import detect_grad_nan, compute_accuracy, set_seed, setup_run
 from models.dataloader.samplers import CategoriesSampler
 from models.dataloader.data_utils import dataset_builder
@@ -48,7 +51,7 @@ def train(epoch, model, loader, optimizer, args=None):
         data_shot, data_query = data[:k], data[k:]   # 都是(5,640,5,5)
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
-        L = FocalLossV2()
+        L = PolyLoss()
         train_1 = train_labels[k:]
         train_1 = F.one_hot(train_1, num_classes=64)
         # print(F.one_hot(train_labels[k:], num_classes=64))
@@ -148,8 +151,12 @@ if __name__ == '__main__':
     args = setup_run(arg_mode='train')  # 创建对象args
 
     model = train_main(args)
-    test_acc, test_ci = test_main(model, args)
 
+    test_acc, test_ci = test_main(model, args)
+    MODEL_NAME = 'renet'
+    learn = vision_learner(train_loader, MODEL_NAME, pretrained=False, loss_func=PolyLossFlat(epsilon=0), metrics=accuracy)
+    learn.fit_one_cycle(5)
+    learn.show_results()
     if not args.no_wandb:
         wandb.log({'test/acc': test_acc, 'test/confidence_interval': test_ci})
 

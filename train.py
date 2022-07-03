@@ -5,8 +5,7 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import fastai
-from fastai.vision.all import *
+
 
 from torch.utils.data import DataLoader
 # from common.PolyLoss import to_one_hot, PolyLoss
@@ -153,10 +152,7 @@ if __name__ == '__main__':
     model = train_main(args)
 
     test_acc, test_ci = test_main(model, args)
-    MODEL_NAME = 'renet'
-    learn = vision_learner(train_loader, MODEL_NAME, pretrained=False, loss_func=PolyLossFlat(epsilon=0), metrics=accuracy)
-    learn.fit_one_cycle(5)
-    learn.show_results()
+
     if not args.no_wandb:
         wandb.log({'test/acc': test_acc, 'test/confidence_interval': test_ci})
 

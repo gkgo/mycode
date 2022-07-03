@@ -33,7 +33,7 @@ class PolyLoss(_Loss):
                  softmax: bool = True,
                  ce_weight: Optional[torch.Tensor] = None,
                  reduction: str = 'mean',
-                 epsilon: float = 1.0,
+                 epsilon: float = 3.0,
                  ) -> None:
         super().__init__()
         self.softmax = softmax

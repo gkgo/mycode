@@ -89,18 +89,18 @@ def train_main(args):
     train_sampler = CategoriesSampler(trainset.label, len(trainset.data) // args.batch, args.way, args.shot + args.query)#gfasdgiasugdfkasgfoigaskgaig
     # （训练数据的标签，n_batch=总数/batch，n_cls=5，n_per=16）train_sampler = {CategoriesSampler: 92}
     # train_sampler是一个自定义的batch_sampler
-    train_loader = DataLoader(dataset=trainset, batch_sampler=train_sampler, num_workers=1, pin_memory=True)
+    train_loader = DataLoader(dataset=trainset, batch_sampler=train_sampler, num_workers=2, pin_memory=True)
     # 每够一个batch，把dataset里的数据按原来顺序，将顺序索引值返回，92组索引
 
     trainset_aux = Dataset('train', args)
-    train_loader_aux = DataLoader(dataset=trainset_aux, batch_size=args.batch, shuffle=True, num_workers=1, pin_memory=True)
+    train_loader_aux = DataLoader(dataset=trainset_aux, batch_size=args.batch, shuffle=True, num_workers=2, pin_memory=True)
     # 每够一个batch，把dataset里的数据打乱顺序，将打乱索引值返回
-    train_loaders = {'train_loader': train_loader, 'train_loader_aux': train_loader_aux}  # 不懂
+    train_loaders = {'train_loader': train_loader, 'train_loader_aux': train_loader_aux}  
     # 加载验证集
     valset = Dataset('val', args)  # dataset为val.csv
     val_sampler = CategoriesSampler(valset.label, args.val_episode, args.way, args.shot + args.query)  # 返回的n_batch=200
 
-    val_loader = DataLoader(dataset=valset, batch_sampler=val_sampler, num_workers=1, pin_memory=True)
+    val_loader = DataLoader(dataset=valset, batch_sampler=val_sampler, num_workers=2, pin_memory=True)
     ''' fix val set for all epochs '''
     val_loader = [x for x in val_loader]  # 这里迭代，调用n_batch次（200）__iter__函数,每个batch大小为80
 

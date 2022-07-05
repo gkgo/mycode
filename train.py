@@ -51,10 +51,10 @@ def train(epoch, model, loader, optimizer, args=None):
         logits, absolute_logits = model((data_shot.unsqueeze(0).repeat(args.num_gpu, 1, 1, 1, 1), data_query))
         epi_loss = F.cross_entropy(logits, label)   # Lmetric基于度量的分类损失
         L = PolyLoss()
-        # train_1 = train_labels[k:]
-        # train_1 = F.one_hot(train_1, num_classes=64)
-        # absolute_loss = L(absolute_logits, train_1)
-        absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
+        train_1 = train_labels[k:]
+        train_1 = F.one_hot(train_1, num_classes=64)
+        absolute_loss = L(absolute_logits, train_1)
+        # absolute_loss = F.cross_entropy(absolute_logits, train_labels[k:])
 
 
         # loss for auxiliary batch

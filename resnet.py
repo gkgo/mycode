@@ -190,7 +190,7 @@ class ResNet(nn.Module):
 #         feat_corr = self.fc(feat_corr)
 #         out = x + feat_corr
 
-        return out
+        return x
 
 def resnet12():
     return ResNet(BasicBlock)

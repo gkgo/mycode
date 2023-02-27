@@ -101,9 +101,9 @@ def main():
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),  # 在水平方向上随机翻转
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))]), download=Ture)
+        transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))]), download=True)
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=64, shuffle=True)
-    test_data = torchvision.datasets.CIFAR100('./dataset',transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),  train=False, download=Ture)
+    test_data = torchvision.datasets.CIFAR100('./dataset',transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),  train=False, download=True)
     test_loader = torch.utils.data.DataLoader(test_data)
 
 

@@ -73,7 +73,7 @@ def main():
                                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])}
 
     data_root = os.path.abspath(os.path.join(os.getcwd()))  # get data root path
-    image_path = os.path.join(data_root, "dataset", "flower_data")  # flower data set path
+    image_path = os.path.join(data_root, "datasets", "flower_data")  # flower data set path
     train_dataset = datasets.ImageFolder(root=os.path.join(image_path, "train"),
                                          transform=data_transform["train"])
 

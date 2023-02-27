@@ -226,18 +226,18 @@ class ConvNet4(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-#         x = self.avgpool(x)
-#         x = x.view(x.size(0), -1)
-#         x = self.fc(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
 
-        identity = x
+#         identity = x
         
-        x = self.scr_module(x)
+#         x = self.scr_module(x)
         
         
-        x = x + identity
+#         x = x + identity
         
-        x = F.relu(x, inplace=True)
+#         x = F.relu(x, inplace=True)
         
 #         b, c, h, w = x.shape
 #         x = normalize_feature(x)
@@ -252,6 +252,6 @@ class ConvNet4(nn.Module):
         
 #         x1 = d_s + x
         
-        x = x.mean(dim=[-1, -2])
-        x = self.fc(x)
+#         x = x.mean(dim=[-1, -2])
+#         x = self.fc(x)
         return x

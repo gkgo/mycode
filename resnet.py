@@ -11,36 +11,43 @@ def featureL2Norm(feature):
     return torch.div(feature, norm)
 
 class mySelfCorrelationComputation(nn.Module):
-    def __init__(self, kernel_size=(3, 3), padding=1):
+    def __init__(self, kernel_size=(5, 5), padding=2):
         super(mySelfCorrelationComputation, self).__init__()
         self.kernel_size = kernel_size
         self.unfold = nn.Unfold(kernel_size=kernel_size, padding=padding)
-        self.relu = nn.ReLU(inplace=False)
-        self.bn1 = nn.BatchNorm2d(640)
 
-        self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 160, kernel_size=1, bias=False, padding=0),
-                                        nn.BatchNorm2d(160),
+        # Add BatchNorm2d before the self-attention block
+        self.bn1 = nn.BatchNorm2d(640)
+        self.relu1 = nn.ReLU(inplace=False)
+
+        # Increase the number of channels in the convolution layers
+        self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 128, kernel_size=1, bias=False, padding=0),
+                                        nn.BatchNorm2d(128),
                                         nn.ReLU(inplace=True))
-        self.embeddingFea = nn.Sequential(nn.Conv2d(1600, 640,
+        self.embeddingFea = nn.Sequential(nn.Conv2d(3328, 640,
                                                      kernel_size=1, bias=False, padding=0),
                                            nn.BatchNorm2d(640),
                                            nn.ReLU(inplace=True))
+
+        # Add skip connections between the input and output of the self-attention block
         self.conv1x1_out = nn.Sequential(
-            nn.Conv2d(640, 640, kernel_size=1, bias=False, padding=0),
+            nn.Conv2d(768, 640, kernel_size=1, bias=False, padding=0),
             nn.BatchNorm2d(640))
-        self.dropout = nn.Dropout(0.5)
+
+        # Add dropout regularization after the self-attention block
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
-        # x = self.bn1(x)
-        # x = self.relu(x)
-        x = self.conv1x1_in(x)
+        # Apply BatchNorm2d and ReLU before the self-attention block
+        x = self.bn1(x)
+        x = self.relu1(x)
+
         b, c, h, w = x.shape
-        x0 = self.relu(x)
-        x = x0
         x = F.normalize(x, dim=1, p=2)
+        x = self.conv1x1_in(x)
         identity = x
         x = self.unfold(x)
-        x = x.view(b, c, self.kernel_size[0], self.kernel_size[1], h, w)  # b, c, u, v, h, w
+        x = x.view(b, -1, self.kernel_size[0], self.kernel_size[1], h, w)  # b, c, u, v, h, w
         x = x * identity.unsqueeze(2).unsqueeze(2)
         x = x.view(b, -1, h, w)
         feature_gs = featureL2Norm(x)
@@ -50,9 +57,15 @@ class mySelfCorrelationComputation(nn.Module):
 
         # embed
         feature_embd = self.embeddingFea(feature_cat)
+
+        # Add skip connection between the input and output of the self-attention block
+        feature_embd = torch.cat([feature_embd, identity], 1)
         feature_embd = self.conv1x1_out(feature_embd)
-        # feature_embd = self.dropout(feature_embd)
+
+        # Add dropout regularization after the self-attention block
+        feature_embd = self.dropout(feature_embd)
         return feature_embd
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -117,7 +130,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 160, stride=2)
         self.layer3 = self._make_layer(block, 320, stride=2)
         self.layer4 = self._make_layer(block, 640, stride=2)
-        self.scr_module = mySelfCorrelationComputation(kernel_size=(3,3), padding=1)
+        self.scr_module = mySelfCorrelationComputation(kernel_size=(5,5), padding=2)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(640, num_classes)
@@ -153,42 +166,42 @@ class ResNet(nn.Module):
 
         x = self.layer4(x)
 #____________________________________
-#         identity = x
-
-#         x = self.scr_module(x)
-
-
-#         x = x + identity
-
-#         x = F.relu(x, inplace=True)
-
-#         b, c, h, w = x.shape
-#         x = normalize_feature(x)
-
-#         y = F.normalize(x, p=2, dim=1, eps=1e-8)
-
-#         d_s = y.view(b, c, -1)
-#         d_s = gaussian_normalize(d_s, dim=2)
-
-#         d_s = F.softmax(d_s /2, dim=2)
-#         d_s = d_s.view(b,c,h, w)
-
-#         x1 = d_s + x
-
-#         x = x1.mean(dim=[-1, -2])
-#         x = self.fc(x)
-#_______________________________________________________
         identity = x
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
+
+        x = self.scr_module(x)
+
+
+        x = x + identity
+
+        x = F.relu(x, inplace=True)
+
+        b, c, h, w = x.shape
+        x = normalize_feature(x)
+
+        y = F.normalize(x, p=2, dim=1, eps=1e-8)
+
+        d_s = y.view(b, c, -1)
+        d_s = gaussian_normalize(d_s, dim=2)
+
+        d_s = F.softmax(d_s /2, dim=2)
+        d_s = d_s.view(b,c,h, w)
+
+        x1 = d_s + x
+
+        x = x1.mean(dim=[-1, -2])
         x = self.fc(x)
+#_______________________________________________________
+#         identity = x
+#         x = self.avgpool(x)
+#         x = x.view(x.size(0), -1)
+#         x = self.fc(x)
         
         
-        # Self-correlation module
-        feat_corr = self.scr_module(identity)
-        feat_corr = feat_corr.mean([2, 3])
-        feat_corr = self.fc(feat_corr)
-        out = x + feat_corr
+#         # Self-correlation module
+#         feat_corr = self.scr_module(identity)
+#         feat_corr = feat_corr.mean([2, 3])
+#         feat_corr = self.fc(feat_corr)
+#         out = x + feat_corr
 
         return out
 

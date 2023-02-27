@@ -13,43 +13,41 @@ def featureL2Norm(feature):
 class mySelfCorrelationComputation(nn.Module):
     def __init__(self, kernel_size=(5, 5), padding=2):
         super(mySelfCorrelationComputation, self).__init__()
+        planes =[640, 64, 64, 640]
         self.kernel_size = kernel_size
         self.unfold = nn.Unfold(kernel_size=kernel_size, padding=padding)
+        self.relu = nn.ReLU(inplace=False)
 
-        # Add BatchNorm2d before the self-attention block
-        self.bn1 = nn.BatchNorm2d(640)
-        self.relu1 = nn.ReLU(inplace=False)
-
-        # Increase the number of channels in the convolution layers
-        self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 128, kernel_size=1, bias=False, padding=0),
-                                        nn.BatchNorm2d(128),
+        self.conv1x1_in = nn.Sequential(nn.Conv2d(planes[0], planes[1], kernel_size=1, bias=False, padding=0),
+                                        nn.BatchNorm2d(planes[1]),
                                         nn.ReLU(inplace=True))
-        self.embeddingFea = nn.Sequential(nn.Conv2d(3328, 640,
+        self.embeddingFea = nn.Sequential(nn.Conv2d(1664, 640,
                                                      kernel_size=1, bias=False, padding=0),
                                            nn.BatchNorm2d(640),
                                            nn.ReLU(inplace=True))
-
-        # Add skip connections between the input and output of the self-attention block
         self.conv1x1_out = nn.Sequential(
-            nn.Conv2d(768, 640, kernel_size=1, bias=False, padding=0),
+            nn.Conv2d(640, 640, kernel_size=1, bias=False, padding=0),
             nn.BatchNorm2d(640))
 
-        # Add dropout regularization after the self-attention block
-        self.dropout = nn.Dropout(0.2)
-
     def forward(self, x):
-        # Apply BatchNorm2d and ReLU before the self-attention block
-        x = self.bn1(x)
-        x = self.relu1(x)
 
-        b, c, h, w = x.shape
-        x = F.normalize(x, dim=1, p=2)
         x = self.conv1x1_in(x)
+        b, c, h, w = x.shape
+
+        x0 = self.relu(x)
+        x = x0
+        x = F.normalize(x, dim=1, p=2)
         identity = x
-        x = self.unfold(x)
-        x = x.view(b, -1, self.kernel_size[0], self.kernel_size[1], h, w)  # b, c, u, v, h, w
-        x = x * identity.unsqueeze(2).unsqueeze(2)
+
+        x = self.unfold(x)  # 提取出滑动的局部区域块，这里滑动窗口大小为5*5，步长为1
+        # b, cuv, h, w  （80,640*5*5,5,5)
+        x = x.view(b, c, self.kernel_size[0], self.kernel_size[1], h, w)  # b, c, u, v, h, w
+        x = x * identity.unsqueeze(2).unsqueeze(2)  # 通过unsqueeze增维使identity和x变为同维度  公式（1）
+        # b, c, u, v, h, w * b, c, 1, 1, h, w
         x = x.view(b, -1, h, w)
+        # x = x.permute(0, 1, 4, 5, 2, 3).contiguous()  # b, c, h, w, u, v
+        # torch.contiguous()方法首先拷贝了一份张量在内存中的地址，然后将地址按照形状改变后的张量的语义进行排列
+        # x = x.mean(dim=[-1, -2])
         feature_gs = featureL2Norm(x)
 
         # concatenate
@@ -57,13 +55,7 @@ class mySelfCorrelationComputation(nn.Module):
 
         # embed
         feature_embd = self.embeddingFea(feature_cat)
-
-        # Add skip connection between the input and output of the self-attention block
-        feature_embd = torch.cat([feature_embd, identity], 1)
         feature_embd = self.conv1x1_out(feature_embd)
-
-        # Add dropout regularization after the self-attention block
-        feature_embd = self.dropout(feature_embd)
         return feature_embd
 
 

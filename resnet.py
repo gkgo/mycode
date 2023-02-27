@@ -32,7 +32,7 @@ class mySelfCorrelationComputation(nn.Module):
 
     def forward(self, x):
         x = self.bn1(x)
-        x = self.relu1(x)
+        x = self.relu(x)
         x = self.conv1x1_in(x)
         b, c, h, w = x.shape
         x0 = self.relu(x)

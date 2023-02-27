@@ -51,7 +51,7 @@ def test(model, device, test_loader):
 def main():
     device = torch.device("cuda" if GPU else "cpu")
     batch_size = 64
-    nw = 2
+    nw = 1
     model = resnet12().to(device)
     # model = resnet12yuan().to(device)
     # model = resnet18().to(device)

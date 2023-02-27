@@ -252,6 +252,6 @@ class ConvNet4(nn.Module):
         
 #         x1 = d_s + x
         
-        x = x1.mean(dim=[-1, -2])
+        x = x.mean(dim=[-1, -2])
         x = self.fc(x)
         return x

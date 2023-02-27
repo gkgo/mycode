@@ -11,28 +11,28 @@ def featureL2Norm(feature):
     return torch.div(feature, norm)
 
 class mySelfCorrelationComputation(nn.Module):
-    def __init__(self, kernel_size=(5, 5), padding=2):
+    def __init__(self, kernel_size=(3, 3), padding=1):
         super(mySelfCorrelationComputation, self).__init__()
         self.kernel_size = kernel_size
         self.unfold = nn.Unfold(kernel_size=kernel_size, padding=padding)
         self.relu = nn.ReLU(inplace=False)
         self.bn1 = nn.BatchNorm2d(640)
 
-        self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 64, kernel_size=1, bias=False, padding=0),
-                                        nn.BatchNorm2d(64),
+        self.conv1x1_in = nn.Sequential(nn.Conv2d(640, 160, kernel_size=1, bias=False, padding=0),
+                                        nn.BatchNorm2d(160),
                                         nn.ReLU(inplace=True))
-        self.embeddingFea = nn.Sequential(nn.Conv2d(1664, 640,
+        self.embeddingFea = nn.Sequential(nn.Conv2d(1600, 640,
                                                      kernel_size=1, bias=False, padding=0),
                                            nn.BatchNorm2d(640),
                                            nn.ReLU(inplace=True))
         self.conv1x1_out = nn.Sequential(
             nn.Conv2d(640, 640, kernel_size=1, bias=False, padding=0),
             nn.BatchNorm2d(640))
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
-        x = self.bn1(x)
-        x = self.relu(x)
+        # x = self.bn1(x)
+        # x = self.relu(x)
         x = self.conv1x1_in(x)
         b, c, h, w = x.shape
         x0 = self.relu(x)
@@ -51,7 +51,7 @@ class mySelfCorrelationComputation(nn.Module):
         # embed
         feature_embd = self.embeddingFea(feature_cat)
         feature_embd = self.conv1x1_out(feature_embd)
-        feature_embd = self.dropout(feature_embd)
+        # feature_embd = self.dropout(feature_embd)
         return feature_embd
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -153,44 +153,44 @@ class ResNet(nn.Module):
 
         x = self.layer4(x)
 #____________________________________
-        identity = x
-
-        x = self.scr_module(x)
-
-
-        x = x + identity
-
-        x = F.relu(x, inplace=True)
-
-        b, c, h, w = x.shape
-        x = normalize_feature(x)
-
-        y = F.normalize(x, p=2, dim=1, eps=1e-8)
-
-        d_s = y.view(b, c, -1)
-        d_s = gaussian_normalize(d_s, dim=2)
-
-        d_s = F.softmax(d_s /2, dim=2)
-        d_s = d_s.view(b,c,h, w)
-
-        x1 = d_s + x
-
-        x = x1.mean(dim=[-1, -2])
-        x = self.fc(x)
-#_______________________________________________________
 #         identity = x
-#         x = self.avgpool(x)
-#         x = x.view(x.size(0), -1)
-#         x = self.fc(x)
-        
-        
-#         # Self-correlation module
-#         feat_corr = self.scr_module(identity)
-#         feat_corr = feat_corr.mean([2, 3])
-#         feat_corr = self.fc(feat_corr)
-#         out = x + feat_corr
 
-        return x
+#         x = self.scr_module(x)
+
+
+#         x = x + identity
+
+#         x = F.relu(x, inplace=True)
+
+#         b, c, h, w = x.shape
+#         x = normalize_feature(x)
+
+#         y = F.normalize(x, p=2, dim=1, eps=1e-8)
+
+#         d_s = y.view(b, c, -1)
+#         d_s = gaussian_normalize(d_s, dim=2)
+
+#         d_s = F.softmax(d_s /2, dim=2)
+#         d_s = d_s.view(b,c,h, w)
+
+#         x1 = d_s + x
+
+#         x = x1.mean(dim=[-1, -2])
+#         x = self.fc(x)
+#_______________________________________________________
+        identity = x
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        
+        
+        # Self-correlation module
+        feat_corr = self.scr_module(identity)
+        feat_corr = feat_corr.mean([2, 3])
+        feat_corr = self.fc(feat_corr)
+        out = x + feat_corr
+
+        return out
 
 def resnet12():
     return ResNet(BasicBlock)

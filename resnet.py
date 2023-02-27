@@ -117,7 +117,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 160, stride=2)
         self.layer3 = self._make_layer(block, 320, stride=2)
         self.layer4 = self._make_layer(block, 640, stride=2)
-        self.scr_module = mySelfCorrelationComputation(kernel_size=(5,5), padding=2)
+        self.scr_module = mySelfCorrelationComputation(kernel_size=(3,3), padding=1)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(640, num_classes)

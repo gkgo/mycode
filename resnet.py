@@ -199,3 +199,49 @@ class ResNet(nn.Module):
 
 def resnet12():
     return ResNet(BasicBlock)
+
+class ConvNet4(nn.Module):
+
+    def __init__(self, num_classes=100, x_dim=3, hid_dim=64, z_dim=640):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            conv_block(x_dim, hid_dim),
+            conv_block(hid_dim, hid_dim),
+            conv_block(hid_dim, hid_dim),
+            conv_block(hid_dim, z_dim),
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(640, num_classes)
+        self.scr_module = mySelfCorrelationComputation(kernel_size=(5, 5), padding=2)
+
+    def forward(self, x):
+        x = self.encoder(x)
+#         x = self.avgpool(x)
+#         x = x.view(x.size(0), -1)
+#         x = self.fc(x)
+
+        identity = x
+        
+        x = self.scr_module(x)
+        
+        
+        x = x + identity
+        
+        x = F.relu(x, inplace=True)
+        
+        b, c, h, w = x.shape
+        x = normalize_feature(x)
+        
+        y = F.normalize(x, p=2, dim=1, eps=1e-8)
+        
+        d_s = y.view(b, c, -1)
+        d_s = gaussian_normalize(d_s, dim=2)
+        
+        d_s = F.softmax(d_s /5.0, dim=2)
+        d_s = d_s.view(b,c,h, w)
+        
+        x1 = d_s + x
+        
+        x = x1.mean(dim=[-1, -2])
+        x = self.fc(x)
+        return x

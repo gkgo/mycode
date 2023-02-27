@@ -175,7 +175,7 @@ class ResNet(nn.Module):
         d_s = y.view(b, c, -1)
         d_s = gaussian_normalize(d_s, dim=2)
 
-        d_s = F.softmax(d_s /4, dim=2)
+        d_s = F.softmax(d_s /3, dim=2)
         d_s = d_s.view(b,c,h, w)
 
         x1 = d_s + x

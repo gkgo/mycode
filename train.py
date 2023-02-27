@@ -11,7 +11,7 @@ import time
 import os
 import sys
 import json
-from resnet import resnet12
+from resnet import resnet12,ConvNet4
 
 
 GPU = torch.cuda.is_available()
@@ -52,7 +52,8 @@ def main():
     device = torch.device("cuda" if GPU else "cpu")
     batch_size = 32
     nw = 2
-    model = resnet12().to(device)
+#     model = resnet12().to(device)
+    model = ConvNet4().to(device)
     # model = resnet12yuan().to(device)
     # model = resnet18().to(device)
     # model = resnet18gai().to(device)

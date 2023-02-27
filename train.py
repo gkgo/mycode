@@ -11,10 +11,8 @@ import time
 import os
 import sys
 import json
-from res import resnet18gai
-from resnet_model import resnet18
 from resnet import resnet12
-from yuan import resnet12yuan
+
 
 
 GPU = torch.cuda.is_available()

@@ -239,18 +239,18 @@ class ConvNet4(nn.Module):
         
         x = F.relu(x, inplace=True)
         
-        b, c, h, w = x.shape
-        x = normalize_feature(x)
+#         b, c, h, w = x.shape
+#         x = normalize_feature(x)
         
-        y = F.normalize(x, p=2, dim=1, eps=1e-8)
+#         y = F.normalize(x, p=2, dim=1, eps=1e-8)
         
-        d_s = y.view(b, c, -1)
-        d_s = gaussian_normalize(d_s, dim=2)
+#         d_s = y.view(b, c, -1)
+#         d_s = gaussian_normalize(d_s, dim=2)
         
-        d_s = F.softmax(d_s /5.0, dim=2)
-        d_s = d_s.view(b,c,h, w)
+#         d_s = F.softmax(d_s /5.0, dim=2)
+#         d_s = d_s.view(b,c,h, w)
         
-        x1 = d_s + x
+#         x1 = d_s + x
         
         x = x1.mean(dim=[-1, -2])
         x = self.fc(x)

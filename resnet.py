@@ -5,6 +5,33 @@ import torch.nn.functional as F
 import torch
 import torch.nn as nn
 
+class SqueezeExcitation(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super(SqueezeExcitation, self).__init__()
+        hdim = 64
+        self.conv1x1_in = nn.Sequential(nn.Conv2d(channel, hdim, kernel_size=1, bias=False, padding=0),
+                                        nn.BatchNorm2d(hdim),
+                                        nn.ReLU(inplace=False))
+        self.conv1x1_out = nn.Sequential(nn.Conv2d(hdim, channel, kernel_size=1, bias=False, padding=0),
+                                        nn.BatchNorm2d(channel),
+                                        nn.ReLU(inplace=False))
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(hdim, hdim // reduction, bias=False),
+            nn.ReLU(inplace=False),
+            nn.Linear(hdim // reduction, hdim, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.conv1x1_in(x)
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        x = x * y.expand_as(x)
+        x = self.conv1x1_out(x)
+        return x
+
 def featureL2Norm(feature):
     epsilon = 1e-6
     norm = torch.pow(torch.sum(torch.pow(feature, 2), 1) + epsilon, 0.5).unsqueeze(1).expand_as(feature)
@@ -223,22 +250,24 @@ class ConvNet4(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(640, num_classes)
         self.scr_module = mySelfCorrelationComputation(kernel_size=(5, 5), padding=2)
+        self.scr_module = SqueezeExcitation(channel=640)
 
     def forward(self, x):
         x = self.encoder(x)
+
+
+        identity = x
+        
+        x = self.scr_module(x)
+        
+        
+        x = x + identity
+        
+        x = F.relu(x, inplace=True)
+        
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-
-#         identity = x
-        
-#         x = self.scr_module(x)
-        
-        
-#         x = x + identity
-        
-#         x = F.relu(x, inplace=True)
-        
 #         b, c, h, w = x.shape
 #         x = normalize_feature(x)
         

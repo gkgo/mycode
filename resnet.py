@@ -249,7 +249,7 @@ class ConvNet4(nn.Module):
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(640, num_classes)
-        self.scr_module = mySelfCorrelationComputation(kernel_size=(5, 5), padding=2)
+#         self.scr_module = mySelfCorrelationComputation(kernel_size=(5, 5), padding=2)
         self.scr_module = SqueezeExcitation(channel=640)
 
     def forward(self, x):

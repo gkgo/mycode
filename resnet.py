@@ -38,7 +38,7 @@ def featureL2Norm(feature):
     return torch.div(feature, norm)
 
 class mySelfCorrelationComputation(nn.Module):
-    def __init__(self, kernel_size=(5, 5), padding=2):
+    def __init__(self, kernel_size=(3, 3), padding=1):
         super(mySelfCorrelationComputation, self).__init__()
         planes =[640, 64, 64, 640]
         self.kernel_size = kernel_size
@@ -48,7 +48,7 @@ class mySelfCorrelationComputation(nn.Module):
         self.conv1x1_in = nn.Sequential(nn.Conv2d(planes[0], planes[1], kernel_size=1, bias=False, padding=0),
                                         nn.BatchNorm2d(planes[1]),
                                         nn.ReLU(inplace=True))
-        self.embeddingFea = nn.Sequential(nn.Conv2d(1664, 640,
+        self.embeddingFea = nn.Sequential(nn.Conv2d(640, 640,
                                                      kernel_size=1, bias=False, padding=0),
                                            nn.BatchNorm2d(640),
                                            nn.ReLU(inplace=True))
@@ -249,7 +249,7 @@ class ConvNet4(nn.Module):
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(640, num_classes)
-        self.scr_module = mySelfCorrelationComputation(kernel_size=(5, 5), padding=2)
+        self.scr_module = mySelfCorrelationComputation(kernel_size=(3, 3), padding=1)
 #         self.scr_module = SqueezeExcitation(channel=640)
 
     def forward(self, x):
@@ -280,10 +280,10 @@ class ConvNet4(nn.Module):
         
         x1 = d_s + x
                 
-        x = self.avgpool(x1)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        
-#         x = x.mean(dim=[-1, -2])
+#         x = self.avgpool(x1)
+#         x = x.view(x.size(0), -1)
 #         x = self.fc(x)
+        
+        x = x1.mean(dim=[-1, -2])
+        x = self.fc(x)
         return x
